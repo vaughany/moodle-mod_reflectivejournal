@@ -1,71 +1,91 @@
-<?php // $Id: lib.php,v 1.5.2.1 2011/07/19 10:53:40 davmon Exp $
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * Reflective Journal functions
+ *
+ * @package    mod
+ * @subpackage reflectivejournal
+ * @copyright  2012 Paul Vaughan, based on work by David Monllaó and others
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
-// STANDARD MODULE FUNCTIONS /////////////////////////////////////////////////////////
+/**
+ * Standard module functions
+ */
 
-function journal_add_instance($journal) {
-// Given an object containing all the necessary data, 
-// (defined by the form in mod.html) this function 
-// will create a new instance and return the id number 
-// of the new instance.
-
+/**
+ * Given an object containing all the necessary data, (defined by the form in mod.html) this function
+ * will create a new instance and return the id number of the new instance.
+ */
+function reflectivejournal_add_instance($reflectivejournal) {
     global $DB;
 
-    $journal->timemodified = time();
-    $journal->id = $DB->insert_record("journal", $journal);
+    $reflectivejournal->modified = time();
+    $reflectivejournal->id = $DB->insert_record('reflectivejournal', $reflectivejournal);
 
-    journal_grade_item_update($journal);
+    reflectivejournal_grade_item_update($reflectivejournal);
 
-    return $journal->id;
+    return $reflectivejournal->id;
 }
 
-
-function journal_update_instance($journal) {
-// Given an object containing all the necessary data, 
-// (defined by the form in mod.html) this function 
-// will update an existing instance with new data.
-
+/**
+ * Given an object containing all the necessary data, (defined by the form in mod.html) this function
+ * will update an existing instance with new data.
+ */
+function reflectivejournal_update_instance($reflectivejournal) {
     global $DB;
-    
-    $journal->timemodified = time();
-    $journal->id = $journal->instance;
 
-    $result = $DB->update_record("journal", $journal);
+    $reflectivejournal->modified = time();
+    $reflectivejournal->id = $reflectivejournal->instance;
 
-    journal_grade_item_update($journal);
+    $result = $DB->update_record('reflectivejournal', $reflectivejournal);
 
-    journal_update_grades($journal, 0, false);
+    reflectivejournal_grade_item_update($reflectivejournal);
+
+    reflectivejournal_update_grades($reflectivejournal, 0, false);
 
     return $result;
 }
 
-
-function journal_delete_instance($id) {
-// Given an ID of an instance of this module, 
-// this function will permanently delete the instance 
-// and any data that depends on it.  
-
+/**
+ * Given an ID of an instance of this module, this function will permanently delete the instance
+ * and any data that depends on it.
+ */
+function reflectivejournal_delete_instance($id) {
     global $DB;
 
     $result = true;
-    
-    if (! $journal = $DB->get_record("journal", array("id" => $id))) {
+
+    if (! $reflectivejournal = $DB->get_record('reflectivejournal', array('id' => $id))) {
         return false;
     }
 
-    if (! $DB->delete_records("journal_entries", array("journal" => $journal->id))) {
+    if (! $DB->delete_records('reflectivejournal_entries', array('reflectivejournal' => $reflectivejournal->id))) {
         $result = false;
     }
 
-    if (! $DB->delete_records("journal", array("id" => $journal->id))) {
+    if (! $DB->delete_records('reflectivejournal', array('id' => $reflectivejournal->id))) {
         $result = false;
     }
 
     return $result;
 }
 
-
-function journal_supports($feature) {
+function reflectivejournal_supports($feature) {
     switch($feature) {
         case FEATURE_MOD_INTRO:               return true;
         case FEATURE_GRADE_HAS_GRADE:         return true;
@@ -81,135 +101,128 @@ function journal_supports($feature) {
     }
 }
 
-
-function journal_get_view_actions() {
-    return array('view','view all','view responses');
+function reflectivejournal_get_view_actions() {
+    return array('view', 'view all', 'view responses');
 }
 
-
-function journal_get_post_actions() {
-    return array('add entry','update entry','update feedback');
+function reflectivejournal_get_post_actions() {
+    return array('add entry', 'update entry', 'update feedback');
 }
 
-
-function journal_user_outline($course, $user, $mod, $journal) {
-    
+function reflectivejournal_user_outline($course, $user, $mod, $reflectivejournal) {
     global $DB;
-    
-    if ($entry = $DB->get_record("journal_entries", array("userid" => $user->id, "journal" => $journal->id))) {
+
+    if ($entry = $DB->get_record('reflectivejournal_entries', array('userid' => $user->id, 'reflectivejournal' => $reflectivejournal->id))) {
 
         $numwords = count(preg_split("/\w\b/", $entry->text)) - 1;
 
-        $result->info = get_string("numwords", "", $numwords);
+        $result->info = get_string('numwords', '', $numwords);
         $result->time = $entry->modified;
         return $result;
     }
-    return NULL;
+    return null;
 }
 
-
-function journal_user_complete($course, $user, $mod, $journal) {
-
+function reflectivejournal_user_complete($course, $user, $mod, $reflectivejournal) {
     global $DB, $OUTPUT;
-    
-    if ($entry = $DB->get_record("journal_entries", array("userid" => $user->id, "journal" => $journal->id))) {
+
+    if ($entry = $DB->get_record('reflectivejournal_entries', array('userid' => $user->id, 'reflectivejournal' => $reflectivejournal->id))) {
 
         echo $OUTPUT->box_start();
-        
+
         if ($entry->modified) {
-            echo "<p><font size=\"1\">".get_string("lastedited").": ".userdate($entry->modified)."</font></p>";
+            echo '<p style="font-size: 60%;">'.get_string('lastedited').': '.userdate($entry->modified).'</p>';
         }
         if ($entry->text) {
             echo format_text($entry->text, $entry->format);
         }
         if ($entry->teacher) {
-            $grades = make_grades_menu($journal->grade);
-            journal_print_feedback($course, $entry, $grades);
+            $grades = make_grades_menu($reflectivejournal->grade);
+            reflectivejournal_print_feedback($course, $entry, $grades);
         }
-        
+
         echo $OUTPUT->box_end();
 
     } else {
-        print_string("noentry", "journal");
+        print_string('noentry', 'reflectivejournal');
     }
 }
 
-
-function journal_cron () {
-// Function to be run periodically according to the moodle cron
-// Finds all journal notifications that have yet to be mailed out, and mails them
-
+/**
+ * Function to be run periodically according to the moodle cron
+ * Finds all journal notifications that have yet to be mailed out, and mails them
+ */
+function reflectivejournal_cron () {
     global $CFG, $USER, $DB;
 
     $cutofftime = time() - $CFG->maxeditingtime;
 
-    if ($entries = journal_get_unmailed_graded($cutofftime)) {
+    if ($entries = reflectivejournal_get_unmailed_graded($cutofftime)) {
         $timenow = time();
 
         foreach ($entries as $entry) {
 
-            echo "Processing journal entry $entry->id\n";
+            echo 'Processing Reflective Journal entry '.$entry->id."\n";
 
-            if (! $user = $DB->get_record("user", array("id" => $entry->userid))) {
-                echo "Could not find user $entry->userid\n";
+            if (! $user = $DB->get_record('user', array('id' => $entry->userid))) {
+                echo 'Could not find user '.$entry->userid."\n";
                 continue;
             }
 
             $USER->lang = $user->lang;
 
-            if (! $course = $DB->get_record("course", array("id" => $entry->course))) {
-                echo "Could not find course $entry->course\n";
+            if (! $course = $DB->get_record('course', array('id' => $entry->course))) {
+                echo 'Could not find course '.$entry->course."\n";
                 continue;
             }
 
-            if (! $teacher = $DB->get_record("user", array("id" => $entry->teacher))) {
-                echo "Could not find teacher $entry->teacher\n";
+            if (! $teacher = $DB->get_record('user', array('id' => $entry->teacher))) {
+                echo 'Could not find teacher '.$entry->teacher."\n";
                 continue;
             }
 
-
-            if (! $mod = get_coursemodule_from_instance("journal", $entry->journal, $course->id)) {
-                echo "Could not find course module for journal id $entry->journal\n";
+            if (! $mod = get_coursemodule_from_instance('reflectivejournal', $entry->reflectivejournal, $course->id)) {
+                echo 'Could not find course module for reflective journal id '.$entry->reflectivejournal."\n";
                 continue;
             }
-            
+
             $context = get_context_instance(CONTEXT_MODULE, $mod->id);
-            $canadd = has_capability('mod/journal:addentries', $context, $user);
-            $entriesmanager = has_capability('mod/journal:manageentries', $context, $user);
-            
+            $canadd = has_capability('mod/reflectivejournal:addentries', $context, $user);
+            $entriesmanager = has_capability('mod/reflectivejournal:manageentries', $context, $user);
+
             if (!$canadd and $entriesmanager) {
                 continue;  // Not an active participant
             }
-            
-            unset($journalinfo);
-            $journalinfo->teacher = fullname($teacher);
-            $journalinfo->journal = format_string($entry->name,true);
-            $journalinfo->url = "$CFG->wwwroot/mod/journal/view.php?id=$mod->id";
-            $modnamepl = get_string( 'modulenameplural','journal' );
-            $msubject = get_string( 'mailsubject','journal' );
 
-            $postsubject = "$course->shortname: $msubject: ".format_string($entry->name,true);
-            $posttext  = "$course->shortname -> $modnamepl -> ".format_string($entry->name,true)."\n";
-            $posttext .= "---------------------------------------------------------------------\n";
-            $posttext .= get_string("journalmail", "journal", $journalinfo)."\n";
-            $posttext .= "---------------------------------------------------------------------\n";
+            unset($reflectivejournalinfo);
+            $reflectivejournalinfo->teacher = fullname($teacher);
+            $reflectivejournalinfo->journal = format_string($entry->name, true);
+            $reflectivejournalinfo->url = $CFG->wwwroot.'/mod/reflectivejournal/view.php?id='.$mod->id;
+            $modnamepl = get_string( 'modulenameplural', 'reflectivejournal' );
+            $msubject = get_string( 'mailsubject', 'reflectivejournal' );
+
+            $postsubject = $course->shortname.': '.$msubject.': '.format_string($entry->name, true);
+            $posttext  = $course->shortname.' -> '.$modnamepl.' -> '.format_string($entry->name, true)."\n";
+            $posttext .= '---------------------------------------------------------------------'."\n";
+            $posttext .= get_string('journalmail', 'reflectivejournal', $reflectivejournalinfo)."\n";
+            $posttext .= '---------------------------------------------------------------------'."\n";
             if ($user->mailformat == 1) {  // HTML
-                $posthtml = "<p><font face=\"sans-serif\">".
-                "<a href=\"$CFG->wwwroot/course/view.php?id=$course->id\">$course->shortname</a> ->".
-                "<a href=\"$CFG->wwwroot/mod/journal/index.php?id=$course->id\">journals</a> ->".
-                "<a href=\"$CFG->wwwroot/mod/journal/view.php?id=$mod->id\">".format_string($entry->name,true)."</a></font></p>";
-                $posthtml .= "<hr /><font face=\"sans-serif\">";
-                $posthtml .= "<p>".get_string("journalmailhtml", "journal", $journalinfo)."</p>";
-                $posthtml .= "</font><hr />";
+                $posthtml = '<p>'.
+                    '<a href="'.$CFG->wwwroot.'/course/view.php?id='.$course->id.'">'.$course->shortname.'</a> -> '.
+                    '<a href="'.$CFG->wwwroot.'/mod/reflectivejournal/index.php?id='.$course->id.'">Reflective Journal</a> -> '.
+                    '<a href="'.$CFG->wwwroot.'/mod/reflectivejournal/view.php?id='.$mod->id.'">'.format_string($entry->name, true).'</a></p>';
+                $posthtml .= '<hr />';
+                $posthtml .= '<p>'.get_string('journalmailhtml', 'reflectivejournal', $reflectivejournalinfo).'</p>';
+                $posthtml .= '<hr />';
             } else {
-              $posthtml = "";
+                $posthtml = '';
             }
 
             if (! email_to_user($user, $teacher, $postsubject, $posttext, $posthtml)) {
-                echo "Error: Journal cron: Could not send out mail for id $entry->id to user $user->id ($user->email)\n";
+                echo 'Error: Reflective Journal cron: Could not send out mail for id '.$entry->id.' to user '.$user->id.' ('.$user->email.")\n";
             }
-            if (!$DB->set_field("journal_entries", "mailed", "1", array("id" => $entry->id))) {
-                echo "Could not update the mailed field for id $entry->id\n";
+            if (!$DB->set_field('reflectivejournal_entries', 'mailed', '1', array('id' => $entry->id))) {
+                echo 'Could not update the mailed field for id '.$entry->id."\n";
             }
         }
     }
@@ -217,73 +230,75 @@ function journal_cron () {
     return true;
 }
 
-function journal_print_recent_activity($course, $isteacher, $timestart) {
+function reflectivejournal_print_recent_activity($course, $isteacher, $timestart) {
     global $CFG, $DB, $OUTPUT;
 
-    if (!get_config('journal', 'showrecentactivity')) {
+    if (!get_config('reflectivejournal', 'showrecentactivity')) {
         return false;
     }
 
     $content = false;
-    $journals = NULL;
+    $reflectivejournals = null;
 
     // log table should not be used here
 
-    $select = "time > ? AND 
-               course = ? AND 
-               module = 'journal' AND 
-               (action = 'add entry' OR action = 'update entry')";
-    if (!$logs = $DB->get_records_select('log', $select, array($timestart, $course->id), 'time ASC')){
+    $select = "time > ?
+               AND course = ?
+               AND module = 'reflectivejournal'
+               AND (action = 'add entry'
+               OR action = 'update entry')";
+
+    if (!$logs = $DB->get_records_select('log', $select, array($timestart, $course->id), 'time ASC')) {
         return false;
     }
 
     $modinfo = & get_fast_modinfo($course);
     foreach ($logs as $log) {
-        ///Get journal info.  I'll need it later
-        $j_log_info = journal_log_info($log);
+        // Get reflective journal info.  I'll need it later
+        $j_log_info = reflectivejournal_log_info($log);
 
-        $cm = $modinfo->instances['journal'][$j_log_info->id];
+        $cm = $modinfo->instances['reflectivejournal'][$j_log_info->id];
         if (!$cm->uservisible) {
             continue;
         }
 
-        if (!isset($journals[$log->info])) {
-            $journals[$log->info] = $j_log_info;
-            $journals[$log->info]->time = $log->time;
-            $journals[$log->info]->url = str_replace('&', '&amp;', $log->url);
+        if (!isset($reflectivejournals[$log->info])) {
+            $reflectivejournals[$log->info] = $j_log_info;
+            $reflectivejournals[$log->info]->time = $log->time;
+            $reflectivejournals[$log->info]->url = str_replace('&', '&amp;', $log->url);
         }
     }
 
-    if ($journals) {
+    if ($reflectivejournals) {
         $content = true;
-        echo $OUTPUT->heading(get_string('newjournalentries', 'journal').':', 3);
-        foreach ($journals as $journal) {
-            print_recent_activity_note($journal->time, $journal, $journal->name,
-                                       $CFG->wwwroot.'/mod/journal/'.$journal->url);
+        echo $OUTPUT->heading(get_string('newjournalentries', 'reflectivejournal').':', 3);
+        foreach ($reflectivejournals as $reflectivejournal) {
+            print_recent_activity_note($reflectivejournal->time, $reflectivejournal, $reflectivejournal->name,
+                                       $CFG->wwwroot.'/mod/reflectivejournal/'.$reflectivejournal->url);
         }
     }
- 
+
     return $content;
 }
 
-function journal_get_participants($journalid) {
-//Returns the users with data in one journal
-//(users with records in journal_entries, students and teachers)
-
+/**
+ * Returns the users with data in one journal (users with records in journal_entries, students and teachers)
+ */
+function reflectivejournal_get_participants($reflectivejournalid) {
     global $DB;
 
     //Get students
     $students = $DB->get_records_sql("SELECT DISTINCT u.id
                                       FROM {user} u,
-                                      {journal_entries} j
-                                      WHERE j.journal = '$journalid' and
-                                      u.id = j.userid");
+                                      {reflectivejournal_entries} j
+                                      WHERE j.reflectivejournal = '$reflectivejournalid'
+                                      AND u.id = j.userid");
     //Get teachers
     $teachers = $DB->get_records_sql("SELECT DISTINCT u.id
                                       FROM {user} u,
-                                      {journal_entries} j
-                                      WHERE j.journal = '$journalid' and
-                                      u.id = j.teacher");
+                                      {reflectivejournal_entries} j
+                                      WHERE j.reflectivejournal = '$reflectivejournalid'
+                                      AND u.id = j.teacher");
 
     //Add teachers to students
     if ($teachers) {
@@ -295,12 +310,14 @@ function journal_get_participants($journalid) {
     return ($students);
 }
 
-function journal_scale_used ($journalid,$scaleid) {
-//This function returns if a scale is being used by one journal
+/**
+ * This function returns if a scale is being used by one journal
+ */
+function reflectivejournal_scale_used ($reflectivejournalid, $scaleid) {
     global $DB;
-    $return = false;                  
-                                 
-    $rec = $DB->get_record("journal", array("id" => $journalid, "grade" => -$scaleid));
+    $return = false;
+
+    $rec = $DB->get_record('reflectivejournal', array('id' => $reflectivejournalid, 'grade' => -$scaleid));
 
     if (!empty($rec) && !empty($scaleid)) {
         $return = true;
@@ -316,10 +333,10 @@ function journal_scale_used ($journalid,$scaleid) {
  * @param $scaleid int
  * @return boolean True if the scale is used by any journal
  */
-function journal_scale_used_anywhere($scaleid) {
+function reflectivejournal_scale_used_anywhere($scaleid) {
     global $DB;
-    
-    if ($scaleid and $DB->get_records('journal', array('grade' => -$scaleid))) {
+
+    if ($scaleid and $DB->get_records('reflectivejournal', array('grade' => -$scaleid))) {
         return true;
     } else {
         return false;
@@ -332,9 +349,9 @@ function journal_scale_used_anywhere($scaleid) {
  *
  * @param object $mform form passed by reference
  */
-function journal_reset_course_form_definition(&$mform) {
-    $mform->addElement('header', 'journalheader', get_string('modulenameplural', 'journal'));
-    $mform->addElement('advcheckbox', 'reset_journal', get_string('removemessages','journal'));
+function reflectivejournal_reset_course_form_definition(&$mform) {
+    $mform->addElement('header', 'reflectivejournalheader', get_string('modulenameplural', 'reflectivejournal'));
+    $mform->addElement('advcheckbox', 'reset_reflectivejournal', get_string('removemessages', 'reflectivejournal'));
 }
 
 /**
@@ -343,93 +360,89 @@ function journal_reset_course_form_definition(&$mform) {
  * @param object $course
  * @return array
  */
-function journal_reset_course_form_defaults($course) {
-    return array('reset_journal'=>1);
+function reflectivejournal_reset_course_form_defaults($course) {
+    return array('reset_reflectivejournal' => 1);
 }
 
 /**
  * Removes all entries
- * 
+ *
  * @param object $data
  */
-function journal_reset_userdata($data) {
-    
+function reflectivejournal_reset_userdata($data) {
     global $CFG, $DB;
 
     $status = array();
-    if (!empty($data->reset_journal)) {
-        
+    if (!empty($data->reset_reflectivejournal)) {
+
         $sql = "SELECT j.id
-                FROM {journal} j
+                FROM {reflectivejournal} j
                 WHERE j.course = ?";
         $params = array($data->courseid);
 
-        $DB->delete_records_select('journal_entries', "journal IN ($sql)", $params);
-        
-        $status[] = array('component' => get_string('modulenameplural', 'journal'), 
-                          'item' => get_string('removeentries', 'journal'),
+        $DB->delete_records_select('reflectivejournal_entries', 'reflectivejournal IN ('.$sql.')', $params);
+
+        $status[] = array('component' => get_string('modulenameplural', 'reflectivejournal'),
+                          'item' => get_string('removeentries', 'reflectivejournal'),
                           'error' => false);
     }
-    
+
     return $status;
 }
 
-function journal_print_overview($courses, &$htmlarray) {
-    
+function reflectivejournal_print_overview($courses, &$htmlarray) {
     global $USER, $CFG, $DB;
 
-    if (!get_config('journal', 'overview')) {
+    if (!get_config('reflectivejournal', 'overview')) {
         return array();
     }
-    
+
     if (empty($courses) || !is_array($courses) || count($courses) == 0) {
         return array();
     }
 
-    if (!$journals = get_all_instances_in_courses('journal', $courses)) {
+    if (!$reflectivejournals = get_all_instances_in_courses('reflectivejournal', $courses)) {
         return array();
     }
 
-    $strjournal = get_string('modulename', 'journal');
+    $strreflectivejournal = get_string('modulename', 'reflectivejournal');
 
     $timenow = time();
-    foreach ($journals as $journal) {
-        
-        $courses[$journal->course]->format = $DB->get_field('course', 'format', array('id' => $journal->course));
-        
-        if ($courses[$journal->course]->format == 'weeks' AND $journal->days) {
-            
-            $coursestartdate = $courses[$journal->course]->startdate;
-            
-            $journal->timestart  = $coursestartdate + (($journal->section - 1) * 608400);
-            if (!empty($journal->days)) {
-                $journal->timefinish = $journal->timestart + (3600 * 24 * $journal->days);
+    foreach ($reflectivejournals as $reflectivejournal) {
+
+        $courses[$reflectivejournal->course]->format = $DB->get_field('course', 'format', array('id' => $reflectivejournal->course));
+
+        if ($courses[$reflectivejournal->course]->format == 'weeks' AND $reflectivejournal->days) {
+
+            $coursestartdate = $courses[$reflectivejournal->course]->startdate;
+
+            $reflectivejournal->timestart  = $coursestartdate + (($reflectivejournal->section - 1) * 608400);
+            if (!empty($reflectivejournal->days)) {
+                $reflectivejournal->timefinish = $reflectivejournal->timestart + (3600 * 24 * $reflectivejournal->days);
             } else {
-                $journal->timefinish = 9999999999;
+                $reflectivejournal->timefinish = 9999999999;
             }
-            $journalopen = ($journal->timestart < $timenow && $timenow < $journal->timefinish);
-            
+            $reflectivejournalopen = ($reflectivejournal->timestart < $timenow && $timenow < $reflectivejournal->timefinish);
+
         } else {
-            $journalopen = true;
+            $reflectivejournalopen = true;
         }
 
-        if ($journalopen) {
-            $str = '<div class="journal overview"><div class="name">'.
-                   $strjournal.': <a '.($journal->visible?'':' class="dimmed"').
-                   ' href="'.$CFG->wwwroot.'/mod/journal/view.php?id='.$journal->coursemodule.'">'.
-                   $journal->name.'</a></div></div>';
-            
-            if (empty($htmlarray[$journal->course]['journal'])) {
-                $htmlarray[$journal->course]['journal'] = $str;
+        if ($reflectivejournalopen) {
+            $str = '<div class="reflectivejournal overview"><div class="name">'.
+                $strreflectivejournal.': <a '.($reflectivejournal->visible ? '' : ' class="dimmed"').
+                ' href="'.$CFG->wwwroot.'/mod/reflectivejournal/view.php?id='.$reflectivejournal->coursemodule.'">'.
+                $reflectivejournal->name.'</a></div></div>';
+            if (empty($htmlarray[$reflectivejournal->course]['reflectivejournal'])) {
+                $htmlarray[$reflectivejournal->course]['reflectivejournal'] = $str;
             } else {
-                $htmlarray[$journal->course]['journal'] .= $str;
+                $htmlarray[$reflectivejournal->course]['reflectivejournal'] .= $str;
             }
         }
     }
 }
 
-function journal_get_user_grades($journal, $userid=0) {
-
+function reflectivejournal_get_user_grades($reflectivejournal, $userid=0) {
     global $DB;
 
     if ($userid) {
@@ -438,105 +451,59 @@ function journal_get_user_grades($journal, $userid=0) {
         $userstr = '';
     }
 
-    if (!$journal) {
+    if (!$reflectivejournal) {
         return false;
 
     } else {
 
-        $sql = "SELECT userid, modified as datesubmitted, format as feedbackformat, 
-                rating as rawgrade, entrycomment as feedback, teacher as usermodifier, timemarked as dategraded
-                FROM {journal_entries}
-                WHERE journal = '$journal->id' ".$userstr;
+        $sql = "SELECT userid, modified AS datesubmitted, format AS feedbackformat,
+                rating AS rawgrade, entrycomment AS feedback, teacher AS usermodifier, marked AS dategraded
+                FROM {reflectivejournal_entries}
+                WHERE reflectivejournal = '".$reflectivejournal->id."' ".$userstr;
 
         $grades = $DB->get_records_sql($sql);
 
         if ($grades) {
-            foreach ($grades as $key=>$grade) {
+            foreach ($grades as $key => $grade) {
                 $grades[$key]->id = $grade->userid;
             }
         } else {
             return false;
         }
- 
+
         return $grades;
     }
 
 }
 
-
 /**
- * Update journal grades in 1.9 gradebook
- *
- * @param object   $journal      if is null, all journals
- * @param int      $userid       if is false al users
- * @param boolean  $nullifnone   return null if grade does not exist
- */
-function journal_update_grades($journal=null, $userid=0, $nullifnone=true) {
-
-    global $CFG, $DB;
-
-    if (!function_exists('grade_update')) { //workaround for buggy PHP versions
-        require_once($CFG->libdir.'/gradelib.php');
-    }
-
-    if ($journal != null) {
-        if ($grades = journal_get_user_grades($journal, $userid)) {
-            journal_grade_item_update($journal, $grades);
-        } else if ($userid && $nullifnone) {
-            $grade = new object();
-            $grade->userid   = $userid;
-            $grade->rawgrade = NULL;
-            journal_grade_item_update($journal, $grade);
-        } else {
-            journal_grade_item_update($journal);
-        }
-    } else {
-        $sql = "SELECT j.*, cm.idnumber as cmidnumber 
-                FROM {course_modules} cm 
-                JOIN {modules} m ON m.id = cm.module 
-                JOIN {journal} j ON cm.instance = j.id 
-                WHERE m.name = 'journal'";
-        if ($recordset = $DB->get_records_sql($sql)) {
-           foreach ($recordset as $journal) {
-                if ($journal->grade != false) {
-                    journal_update_grades($journal);
-                } else {
-                    journal_grade_item_update($journal);
-                }
-            }
-        }
-    }
-}
-
-
-/**
- * Create grade item for given journal
+ * Create grade item for given reflective journal
  *
  * @param object $journal object with extra cmidnumber
  * @param mixed optional array/object of grade(s); 'reset' means reset grades in gradebook
  * @return int 0 if ok, error code otherwise
  */
-function journal_grade_item_update($journal, $grades=NULL) {
+function reflectivejournal_grade_item_update($reflectivejournal, $grades=null) {
     global $CFG;
-    if (!function_exists('grade_update')) { //workaround for buggy PHP versions
+    if (!function_exists('reflectivejournal_update')) { //workaround for buggy PHP versions
         require_once($CFG->libdir.'/gradelib.php');
     }
 
-    if (array_key_exists('cmidnumber', $journal)) {
-        $params = array('itemname'=>$journal->name, 'idnumber'=>$journal->cmidnumber);
+    if (array_key_exists('cmidnumber', $reflectivejournal)) {
+        $params = array('itemname'=>$reflectivejournal->name, 'idnumber'=>$reflectivejournal->cmidnumber);
     } else {
-        $params = array('itemname'=>$journal->name);
+        $params = array('itemname'=>$reflectivejournal->name);
     }
 
-    if ($journal->grade > 0) {
+    if ($reflectivejournal->grade > 0) {
         $params['gradetype']  = GRADE_TYPE_VALUE;
-        $params['grademax']   = $journal->grade;
+        $params['grademax']   = $reflectivejournal->grade;
         $params['grademin']   = 0;
         $params['multfactor'] = 1.0;
 
-    } else if($journal->grade < 0) {
+    } else if ($reflectivejournal->grade < 0) {
         $params['gradetype'] = GRADE_TYPE_SCALE;
-        $params['scaleid']   = -$journal->grade;
+        $params['scaleid']   = -$reflectivejournal->grade;
 
     } else {
         $params['gradetype']  = GRADE_TYPE_NONE;
@@ -545,10 +512,10 @@ function journal_grade_item_update($journal, $grades=NULL) {
 
     if ($grades  === 'reset') {
         $params['reset'] = true;
-        $grades = NULL;
+        $grades = null;
     }
 
-    return grade_update('mod/journal', $journal->course, 'mod', 'journal', $journal->id, 0, $grades, $params);
+    return grade_update('mod/reflectivejournal', $reflectivejournal->course, 'mod', 'reflectivejournal', $reflectivejournal->id, 0, $grades, $params);
 }
 
 
@@ -558,164 +525,172 @@ function journal_grade_item_update($journal, $grades=NULL) {
  * @param   object   $journal
  * @return  object   grade_item
  */
-function journal_grade_item_delete($journal) {
+function reflectivejournal_grade_item_delete($reflectivejournal) {
     global $CFG;
 
     require_once($CFG->libdir.'/gradelib.php');
 
-    return grade_update('mod/journal', $journal->course, 'mod', 'journal', $journal->id, 0, NULL, array('deleted'=>1));
+    return grade_update('mod/reflectivejournal', $reflectivejournal->course, 'mod', 'reflectivejournal', $reflectivejournal->id, 0, null, array('deleted' => 1));
 }
 
 
-// SQL FUNCTIONS ///////////////////////////////////////////////////////////////////
+/**
+ * SQL functions
+ */
 
-function journal_get_users_done($journal, $currentgroup) {
+function reflectivejournal_get_users_done($reflectivejournal, $currentgroup) {
     global $DB;
 
-    
-    $sql = "SELECT u.* FROM {journal_entries} j 
+    $sql = "SELECT u.*
+            FROM {reflectivejournal_entries} j
             JOIN {user} u ON j.userid = u.id ";
-    
+
     // Group users
     if ($currentgroup != 0) {
-        $sql.= "JOIN {groups_members} gm ON gm.userid = u.id AND gm.groupid = '$currentgroup'";
+        $sql.= "JOIN {groups_members} gm
+                ON gm.userid = u.id
+                AND gm.groupid = '".$currentgroup."'";
     }
-    
-    $sql.= " WHERE j.journal = '$journal->id' ORDER BY j.modified DESC";
-    $journals = $DB->get_records_sql($sql);
 
-    $cm = journal_get_coursemodule($journal->id);
-    if (!$journals || !$cm) {
-        return NULL;
+    $sql.= " WHERE j.reflectivejournal = '".$reflectivejournal->id."' ORDER BY j.modified DESC";
+    $reflectivejournals = $DB->get_records_sql($sql);
+
+    $cm = reflectivejournal_get_coursemodule($reflectivejournal->id);
+    if (!$reflectivejournals || !$cm) {
+        return null;
     }
 
     // remove unenrolled participants
-    foreach ($journals as $key => $user) {
-        
+    foreach ($reflectivejournals as $key => $user) {
+
         $context = get_context_instance(CONTEXT_MODULE, $cm->id);
-        
-        $canadd = has_capability('mod/journal:addentries', $context, $user);
-        $entriesmanager = has_capability('mod/journal:manageentries', $context, $user);
-        
+
+        $canadd = has_capability('mod/reflectivejournal:addentries', $context, $user);
+        $entriesmanager = has_capability('mod/reflectivejournal:manageentries', $context, $user);
+
         if (!$entriesmanager and !$canadd) {
-            unset($journals[$key]);
-        } 
+            unset($reflectivejournals[$key]);
+        }
     }
-    
-    return $journals;
+
+    return $reflectivejournals;
 }
 
-function journal_count_entries($journal, $groupid = 0) {
-/// Counts all the journal entries (optionally in a given group)
-
+/**
+ * Counts all the journal entries (optionally in a given group)
+ */
+function reflectivejournal_count_entries($reflectivejournal, $groupid = 0) {
     global $DB;
-    
-    $cm = journal_get_coursemodule($journal->id);
+
+    $cm = reflectivejournal_get_coursemodule($reflectivejournal->id);
     $context = get_context_instance(CONTEXT_MODULE, $cm->id);
-    
+
     if ($groupid) {     /// How many in a particular group?
 
-        $sql = "SELECT DISTINCT u.id FROM {journal_entries} j 
-                JOIN {groups_members} g ON g.userid = j.userid 
-                JOIN {user} u ON u.id = g.userid 
-                WHERE j.journal = $journal->id AND g.groupid = '$groupid'";
-        $journals = $DB->get_records_sql($sql);
+        $sql = "SELECT DISTINCT u.id FROM {reflectivejournal_entries} j
+                JOIN {groups_members} g ON g.userid = j.userid
+                JOIN {user} u ON u.id = g.userid
+                WHERE j.reflectivejournal = ".$reflectivejournal->id." AND g.groupid = '".$groupid."'";
+        $reflectivejournals = $DB->get_records_sql($sql);
 
     } else { /// Count all the entries from the whole course
-    
-        $sql = "SELECT DISTINCT u.id FROM {journal_entries} j
-                JOIN {user} u ON u.id = j.userid 
-                WHERE j.journal = '$journal->id'";
-        $journals = $DB->get_records_sql($sql);
+
+        $sql = "SELECT DISTINCT u.id FROM {reflectivejournal_entries} j
+                JOIN {user} u ON u.id = j.userid
+                WHERE j.reflectivejournal = '".$reflectivejournal->id."'";
+        $reflectivejournals = $DB->get_records_sql($sql);
     }
-    
-    
-    if (!$journals) {
+
+    if (!$reflectivejournals) {
         return 0;
     }
 
     // remove unenrolled participants
-    foreach ($journals as $key => $user) {
-        
-        $canadd = has_capability('mod/journal:addentries', $context, $user);
-        $entriesmanager = has_capability('mod/journal:manageentries', $context, $user);
-        
+    foreach ($reflectivejournals as $key => $user) {
+
+        $canadd = has_capability('mod/reflectivejournal:addentries', $context, $user);
+        $entriesmanager = has_capability('mod/reflectivejournal:manageentries', $context, $user);
+
         if (!$entriesmanager && !$canadd) {
-            unset($journals[$key]);
+            unset($reflectivejournals[$key]);
         }
     }
-    
-    return count($journals);
+
+    return count($reflectivejournals);
 }
 
-function journal_get_unmailed_graded($cutofftime) {
+function reflectivejournal_get_unmailed_graded($cutofftime) {
     global $DB;
-    
-    $sql = "SELECT je.*, j.course, j.name FROM {journal_entries} je 
-            JOIN {journal} j ON je.journal = j.id 
-            WHERE je.mailed = '0' AND je.timemarked < '$cutofftime' AND je.timemarked > 0";
+
+    $sql = "SELECT je.*, j.course, j.name
+            FROM {reflectivejournal_entries} je
+            JOIN {reflectivejournal} j ON je.reflectivejournal = j.id
+            WHERE je.mailed = '0'
+            AND je.marked < '".$cutofftime."'
+            AND je.marked > 0";
     return $DB->get_records_sql($sql);
 }
 
-function journal_log_info($log) {
+function reflectivejournal_log_info($log) {
     global $DB;
-    
+
     $sql = "SELECT j.*, u.firstname, u.lastname
-            FROM {journal} j
-            JOIN {journal_entries} je ON je.journal = j.id  
+            FROM {reflectivejournal} j
+            JOIN {reflectivejournal_entries} je ON je.reflectivejournal = j.id
             JOIN {user} u ON u.id = je.userid
-            WHERE je.id = '$log->info'";
+            WHERE je.id = '".$log->info."'";
     return $DB->get_record_sql($sql);
 }
 
 /**
  * Returns the journal instance course_module id
- * 
+ *
  * @param integer $journal
- * @return object 
+ * @return object
  */
-function journal_get_coursemodule($journalid) {
-
+function reflectivejournal_get_coursemodule($reflectivejournalid) {
     global $DB;
-    
-    return $DB->get_record_sql("SELECT cm.id FROM {course_modules} cm 
+
+    return $DB->get_record_sql("SELECT cm.id FROM {course_modules} cm
                                 JOIN {modules} m ON m.id = cm.module
-                                WHERE cm.instance = '$journalid' AND m.name = 'journal'");
+                                WHERE cm.instance = '".$reflectivejournalid."'
+                                AND m.name = 'reflectivejournal'");
 }
 
+/**
+ * Other Reflective Journal functions
+ */
 
-// OTHER JOURNAL FUNCTIONS ///////////////////////////////////////////////////////////////////
-
-function journal_print_user_entry($course, $user, $entry, $teachers, $grades) {
-    
+function reflectivejournal_print_user_entry($course, $user, $entry, $teachers, $grades) {
     global $USER, $OUTPUT, $DB, $CFG;
-    
+
     require_once($CFG->dirroot.'/lib/gradelib.php');
 
-    echo "\n<table border=\"1\" cellspacing=\"0\" valign=\"top\" cellpadding=\"10\">";
-        
-    echo "\n<tr>";
-    echo "\n<td rowspan=\"2\" width=\"35\" valign=\"top\">";
+    echo '<table border="1" cellspacing="0" valign="top" cellpadding="10">';
+    echo '  <tr>';
+    echo '    <td rowspan="2" width="35" valign="top">';
     echo $OUTPUT->user_picture($user, array('courseid' => $course->id));
-    echo "</td>";
-    echo "<td nowrap=\"nowrap\" width=\"100%\">".fullname($user);
+    echo '    </td>';
+    echo '    <td nowrap="nowrap" width="100%">'.fullname($user);
     if ($entry) {
-        echo "&nbsp;&nbsp;<font size=\"1\">".get_string("lastedited").": ".userdate($entry->modified)."</font>";
+        echo '      <span style="font-size: 60%;">'.get_string('lastedited').': '.userdate($entry->modified).'</span>';
     }
-    echo "</td>";
-    echo "</tr>";
+    echo '    </td>';
+    echo '  </tr>';
 
-    echo "\n<tr><td width=\"100%\">";
+    echo '  <tr>';
+    echo '    <td width="100%">';
     if ($entry) {
         echo format_text($entry->text, $entry->format);
     } else {
-        print_string("noentry", "journal");
+        print_string('noentry', 'reflectivejournal');
     }
-    echo "</td></tr>";
+    echo '    </td>';
+    echo '  </tr>';
 
     if ($entry) {
-        echo "\n<tr>";
-        echo "<td width=\"35\" valign=\"top\">";
+        echo '  <tr>';
+        echo '    <td width="35" valign="top">';
         if (!$entry->teacher) {
             $entry->teacher = $USER->id;
         }
@@ -723,90 +698,93 @@ function journal_print_user_entry($course, $user, $entry, $teachers, $grades) {
             $teachers[$entry->teacher] = $DB->get_record('user', array('id' => $entry->teacher));
         }
         echo $OUTPUT->user_picture($teachers[$entry->teacher], array('courseid' => $course->id));
-        echo "</td>";
-        echo "<td>".get_string("feedback").":";
-        
-        
+        echo '    </td>';
+        echo '    <td>'.get_string('feedback').':';
+
         $attrs = array();
         $hiddengradestr = '';
         $gradebookgradestr = '';
         $feedbackdisabledstr = '';
         $feedbacktext = $entry->entrycomment;
-        
+
         // If the grade was modified from the gradebook disable edition
-        $grading_info = grade_get_grades($course->id, 'mod', 'journal', $entry->journal, array($user->id));
+        $grading_info = grade_get_grades($course->id, 'mod', 'reflectivejournal', $entry->reflectivejournal, array($user->id));
         if ($gradingdisabled = $grading_info->items[0]->grades[$user->id]->locked || $grading_info->items[0]->grades[$user->id]->overridden) {
             $attrs['disabled'] = 'disabled';
             $hiddengradestr = '<input type="hidden" name="r'.$entry->id.'" value="'.$entry->rating.'"/>';
             $gradebooklink = '<a href="'.$CFG->wwwroot.'/grade/report/grader/index.php?id='.$course->id.'">';
             $gradebooklink.= $grading_info->items[0]->grades[$user->id]->str_long_grade.'</a>';
-            $gradebookgradestr = '<br/>'.get_string("gradeingradebook", "journal").':&nbsp;'.$gradebooklink;
-            
+            $gradebookgradestr = '<br/>'.get_string('gradeingradebook', 'reflectivejournal').':&nbsp;'.$gradebooklink;
+
             $feedbackdisabledstr = 'disabled="disabled"';
             $feedbacktext = $grading_info->items[0]->grades[$user->id]->str_feedback;
         }
-        
+
         // Grade selector
-        echo html_writer::select($grades, 'r'.$entry->id, $entry->rating, get_string("nograde").'...', $attrs);
+        echo html_writer::select($grades, 'r'.$entry->id, $entry->rating, get_string('nograde').'...', $attrs);
         echo $hiddengradestr;
-        if ($entry->timemarked) {
-            echo "&nbsp;&nbsp;<font size=\"1\">".userdate($entry->timemarked)."</font>";
+        if ($entry->marked) {
+            echo '<span style="font-size: 60%;">'.userdate($entry->marked).'</span>';
         }
         echo $gradebookgradestr;
-        
+
         // Feedback text
-        echo "<br /><textarea name=\"c$entry->id\" rows=\"12\" cols=\"60\" wrap=\"virtual\" $feedbackdisabledstr>";
+        echo '    <br />';
+        echo '    <textarea name="c'.$entry->id.'" rows="12" cols="60" wrap="virtual" '.$feedbackdisabledstr.'>';
         p($feedbacktext);
-        echo "</textarea><br />";
-        
+        echo '    </textarea>';
+        echo '    <br />';
+
         if ($feedbackdisabledstr != '') {
-            echo '<input type="hidden" name="c'.$entry->id.'" value="'.$feedbacktext.'"/>';
+            echo '    <input type="hidden" name="c'.$entry->id.'" value="'.$feedbacktext.'"/>';
         }
-        echo "</td></tr>";
+        echo '    </td>';
+        echo '  </tr>';
     }
-    echo "</table><br clear=\"all\" />\n";
-    
+    echo '</table><br clear="all" />';
+
 }
 
-function journal_print_feedback($course, $entry, $grades) {
-
+function reflectivejournal_print_feedback($course, $entry, $grades) {
     global $CFG, $DB, $OUTPUT;
 
     require_once($CFG->dirroot.'/lib/gradelib.php');
-    
+
     if (! $teacher = $DB->get_record('user', array('id' => $entry->teacher))) {
-        print_error('Weird journal error');
+        print_error('Weird reflective journal error');
     }
 
     echo '<table cellspacing="0" align="center" class="feedbackbox">';
 
-    echo '<tr>';
-    echo '<td class="left picture">';
+    echo '  <tr>';
+    echo '    <td class="left picture">';
     echo $OUTPUT->user_picture($teacher, array('courseid' => $course->id));
-    echo '</td>';
-    echo '<td class="entryheader">';
-    echo '<span class="author">'.fullname($teacher).'</span>';
-    echo '&nbsp;&nbsp;<span class="time">'.userdate($entry->timemarked).'</span>';
-    echo '</td>';
-    echo '</tr>';
+    echo '    </td>';
+    echo '    <td class="entryheader">';
+    echo '      <span class="author">'.fullname($teacher).'</span>';
+    echo '      <span class="time">'.userdate($entry->marked).'</span>';
+    echo '    </td>';
+    echo '  </tr>';
 
-    echo '<tr>';
-    echo '<td class="left side">&nbsp;</td>';
-    echo '<td class="entrycontent">';
+    echo '  <tr>';
+    echo '    <td class="left side">&nbsp;</td>';
+    echo '    <td class="entrycontent">';
 
-    echo '<div class="grade">';
-    
+    echo '      <div class="grade">';
+
     // Gradebook preference
-    if ($grading_info = grade_get_grades($course->id, 'mod', 'journal', $entry->journal, array($entry->userid))) {
+    if ($grading_info = grade_get_grades($course->id, 'mod', 'reflectivejournal', $entry->reflectivejournal, array($entry->userid))) {
         echo get_string('grade').': ';
         echo $grading_info->items[0]->grades[$entry->userid]->str_long_grade;
     } else {
         print_string('nograde');
     }
-    echo '</div>';
+    echo '      </div>';
 
     // Feedback text
     echo format_text($entry->entrycomment);
-    echo '</td></tr></table>';
+    echo '    </td>';
+    echo '  </tr>';
+    echo '</table>';
 }
 
