@@ -25,9 +25,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$module->version        = 2012030600;                   // The current plugin version (Date: YYYYMMDDXX)
-$plugin->requires       = 2010112400;                   // Moodle 2.0+
-$plugin->component      = 'mod_reflectivejournal';      // Full name of the plugin (used for diagnostics)
+$module->version        = 2012031600;                   // The current plugin version (Date: YYYYMMDDXX)
+$module->requires       = 2010112400;                   // Moodle 2.0+
+$module->component      = 'mod_reflectivejournal';      // Full name of the plugin (used for diagnostics)
 $module->cron           = 60;                           // Period for cron to check this plugin (secs)
 $module->maturity       = MATURITY_BETA;
 $module->release        = '0.1';
